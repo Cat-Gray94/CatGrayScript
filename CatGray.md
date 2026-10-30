@@ -108,13 +108,18 @@ end)
 
 local frame = Instance.new("Frame")
 frame.Parent = gui
-frame.Size = UDim2.fromOffset(430,500)
-frame.Position = UDim2.new(.5,-215,.5,-250)
 
-frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+frame.Name = "Gui"
+frame.Size = UDim2.fromOffset(430, 500)
+
+-- Centraliza a interface na tela
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.Position = UDim2.fromScale(0.5, 0.5)
+
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.Visible = false
 
-Instance.new("UICorner",frame)
+Instance.new("UICorner", frame)
 
 ---------------------------------------------------
 -- TOPO
@@ -123,6 +128,7 @@ Instance.new("UICorner",frame)
 local top = Instance.new("Frame")
 top.Parent = frame
 top.Size = UDim2.new(1,0,0,40)
+top.Name = "Top"
 
 top.BackgroundColor3 = Color3.fromRGB(18,18,18)
 
@@ -139,6 +145,19 @@ title.TextColor3 = Color3.new(1,1,1)
 title.TextSize = 22
 title.Font = Enum.Font.GothamBold
 title.TextXAlignment = Enum.TextXAlignment.Left
+
+local creator = Instance.new("TextLabel")
+creator.Parent = top
+creator.BackgroundTransparency = 1
+creator.Size = UDim2.new(0.709, -80,0.325, 0)
+creator.Position = UDim2.new(0, 180,0, 22)
+
+creator.Text = "Made by LucasDaviSonic2016"
+creator.TextColor3 = Color3.new(0.211765, 0.211765, 0.211765)
+creator.TextScaled = true
+creator.Name = "Creator"
+creator.Font = Enum.Font.GothamBold
+creator.TextXAlignment = Enum.TextXAlignment.Left
 
 ---------------------------------------------------
 -- FECHAR
@@ -207,6 +226,72 @@ layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 		)
 
 end)
+
+-- RESPONSIVIDADE AUTOMÁTICA DO HD ADMIN
+
+local responsiveScale = frame:FindFirstChild("ResponsiveScale")
+
+if not responsiveScale then
+	responsiveScale = Instance.new("UIScale")
+	responsiveScale.Name = "ResponsiveScale"
+	responsiveScale.Parent = frame
+end
+
+local viewportConnection
+
+local function UpdateResponsiveGUI()
+	local camera = workspace.CurrentCamera
+	if not camera then return end
+
+	local viewport = camera.ViewportSize
+
+	-- Detecta o tipo de controle utilizado pelo jogador
+	local touchMode = UIS.PreferredInput == Enum.PreferredInput.Touch
+
+	local marginX
+	local marginY
+
+	if touchMode then
+		-- Celular e tablet
+		marginX = 24
+		marginY = 90
+	else
+		-- PC e outros dispositivos
+		marginX = 40
+		marginY = 60
+	end
+
+	-- Calcula o tamanho necessário para caber na tela
+	local scaleX = (viewport.X - marginX) / 430
+	local scaleY = (viewport.Y - marginY) / 500
+
+	local scale = math.min(1, scaleX, scaleY)
+
+	responsiveScale.Scale = math.clamp(scale, 0.55, 1)
+end
+
+local function ConnectCamera()
+	if viewportConnection then
+		viewportConnection:Disconnect()
+		viewportConnection = nil
+	end
+
+	local camera = workspace.CurrentCamera
+
+	if camera then
+		viewportConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(UpdateResponsiveGUI)
+	end
+
+	UpdateResponsiveGUI()
+end
+
+-- Atualiza quando o jogador muda o tipo de controle
+UIS:GetPropertyChangedSignal("PreferredInput"):Connect(UpdateResponsiveGUI)
+
+-- Atualiza quando a resolução ou câmera muda
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(ConnectCamera)
+
+ConnectCamera()
 
 ---------------------------------------------------
 -- ARRASTAR
@@ -507,10 +592,10 @@ UIS.InputBegan:Connect(function(input,gameProcessed)
 
 		StopFlying()
 
-	---------------------------------------------------
-	-- NÃO ESTÁ VOANDO?
-	-- E LIGA O VOO NOVAMENTE
-	---------------------------------------------------
+		---------------------------------------------------
+		-- NÃO ESTÁ VOANDO?
+		-- E LIGA O VOO NOVAMENTE
+		---------------------------------------------------
 
 	else
 
@@ -807,7 +892,7 @@ local function StartFlying()
 			end
 
 			local camera =
-				workspace.CurrentCamera
+			workspace.CurrentCamera
 
 			if not camera then
 				return
@@ -818,14 +903,14 @@ local function StartFlying()
 			---------------------------------------------------
 
 			bodyGyro.CFrame =
-				camera.CFrame
+			camera.CFrame
 
 			---------------------------------------------------
 			-- VELOCIDADE
 			---------------------------------------------------
 
 			local velocity =
-				Vector3.zero
+			Vector3.zero
 
 			---------------------------------------------------
 			-- SÓ MOVIMENTA SE NÃO ESTIVER ESCREVENDO
@@ -836,28 +921,28 @@ local function StartFlying()
 				if UIS:IsKeyDown(Enum.KeyCode.W) then
 
 					velocity +=
-						camera.CFrame.LookVector
+					camera.CFrame.LookVector
 
 				end
 
 				if UIS:IsKeyDown(Enum.KeyCode.S) then
 
 					velocity -=
-						camera.CFrame.LookVector
+					camera.CFrame.LookVector
 
 				end
 
 				if UIS:IsKeyDown(Enum.KeyCode.A) then
 
 					velocity -=
-						camera.CFrame.RightVector
+					camera.CFrame.RightVector
 
 				end
 
 				if UIS:IsKeyDown(Enum.KeyCode.D) then
 
 					velocity +=
-						camera.CFrame.RightVector
+					camera.CFrame.RightVector
 
 				end
 
@@ -868,7 +953,7 @@ local function StartFlying()
 				if UIS:IsKeyDown(Enum.KeyCode.Space) then
 
 					velocity +=
-						Vector3.new(0,1,0)
+					Vector3.new(0,1,0)
 
 				end
 
@@ -879,7 +964,7 @@ local function StartFlying()
 				if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
 
 					velocity -=
-						Vector3.new(0,1,0)
+					Vector3.new(0,1,0)
 
 				end
 
@@ -892,17 +977,17 @@ local function StartFlying()
 			if velocity.Magnitude > 0 then
 
 				velocity =
-					velocity.Unit * flySpeed
+				velocity.Unit * flySpeed
 
 			else
 
 				velocity =
-					Vector3.zero
+				Vector3.zero
 
 			end
 
 			bodyVelocity.Velocity =
-				velocity
+			velocity
 
 		end)
 
@@ -1074,9 +1159,9 @@ noclipButton.MouseButton1Click:Connect(function()
 
 		end)
 
-	---------------------------------------------------
-	-- NOCLIP OFF
-	---------------------------------------------------
+		---------------------------------------------------
+		-- NOCLIP OFF
+		---------------------------------------------------
 
 	else
 
@@ -1174,11 +1259,11 @@ local function RemoveESP()
 					att:Destroy()
 				end
 			end
-			
+
 			local nameESP = plr.Character:FindFirstChild("HDNameESP")
-if nameESP then
-	nameESP:Destroy()
-end
+			if nameESP then
+				nameESP:Destroy()
+			end
 
 		end
 
@@ -1449,7 +1534,7 @@ local function CreateHealthESP()
 			local hum = plr.Character:FindFirstChildOfClass("Humanoid")
 
 			if head and hum then
-				
+
 				local nameEspEnabled = false
 				local nameLabels = {}
 
@@ -2338,7 +2423,7 @@ UIS.InputBegan:Connect(function(input,gameProcessed)
 
 		StopAimbot()
 
-	-- Se estiver parado, R liga
+		-- Se estiver parado, R liga
 	else
 
 		StartAimbot()
@@ -2695,8 +2780,8 @@ hopButton.MouseButton1Click:Connect(function()
 		return game:GetService("HttpService"):JSONDecode(
 			game:HttpGet(
 				"https://games.roblox.com/v1/games/"..
-				game.PlaceId..
-				"/servers/Public?sortOrder=Asc&limit=100"
+					game.PlaceId..
+					"/servers/Public?sortOrder=Asc&limit=100"
 			)
 		)
 
@@ -2708,7 +2793,7 @@ hopButton.MouseButton1Click:Connect(function()
 		for _,server in pairs(result.data) do
 
 			if server.id ~= game.JobId 
-			and server.playing < server.maxPlayers then
+				and server.playing < server.maxPlayers then
 
 				table.insert(
 					servers,
@@ -2726,8 +2811,8 @@ hopButton.MouseButton1Click:Connect(function()
 
 		local randomServer =
 			servers[
-				math.random(1,#servers)
-			]
+		math.random(1,#servers)
+		]
 
 
 		TeleportService:TeleportToPlaceInstance(
@@ -3043,9 +3128,9 @@ UIS.InputBegan:Connect(function(input,gameProcessed)
 		npcAimbotLoopId += 1
 		npcAimbotTarget = nil
 
-	---------------------------------------------------
-	-- RETOMA
-	---------------------------------------------------
+		---------------------------------------------------
+		-- RETOMA
+		---------------------------------------------------
 
 	else
 
