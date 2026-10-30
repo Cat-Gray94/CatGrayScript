@@ -31,66 +31,110 @@ open.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner",open)
 
 ---------------------------------------------------
--- HD ARRASTÁVEL SEM ABRIR ENQUANTO ARRASTA
+-- HD BUTTON — ARRASTÁVEL NO PC E MOBILE
 ---------------------------------------------------
 
 local draggingHD = false
-local dragStartHD
-local startPosHD
+local dragStartHD = nil
+local startPosHD = nil
+
 local movedHD = false
 local ignoreNextClick = false
 
+local activeInputHD = nil
+
+---------------------------------------------------
+-- INÍCIO DO ARRASTE
+---------------------------------------------------
+
 open.InputBegan:Connect(function(input)
 
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-
-		draggingHD = true
-		movedHD = false
-		dragStartHD = input.Position
-		startPosHD = open.Position
-
+	if input.UserInputType ~= Enum.UserInputType.MouseButton1
+		and input.UserInputType ~= Enum.UserInputType.Touch then
+		return
 	end
 
+	draggingHD = true
+	movedHD = false
+
+	dragStartHD = input.Position
+	startPosHD = open.Position
+
+	activeInputHD = input
+
 end)
+
+---------------------------------------------------
+-- MOVIMENTO
+---------------------------------------------------
 
 UIS.InputChanged:Connect(function(input)
 
-	if draggingHD and input.UserInputType == Enum.UserInputType.MouseMovement then
+	if not draggingHD then
+		return
+	end
 
-		local delta = input.Position - dragStartHD
+	local isMouseMovement =
+		input.UserInputType == Enum.UserInputType.MouseMovement
 
-		if delta.Magnitude > 5 then
-			movedHD = true
+	local isTouchMovement =
+		input.UserInputType == Enum.UserInputType.Touch
+		and input == activeInputHD
 
-			open.Position = UDim2.new(
-				startPosHD.X.Scale,
-				startPosHD.X.Offset + delta.X,
-				startPosHD.Y.Scale,
-				startPosHD.Y.Offset + delta.Y
-			)
-		end
+	if not isMouseMovement and not isTouchMovement then
+		return
+	end
 
+	local delta = input.Position - dragStartHD
+
+	if delta.Magnitude > 5 then
+		movedHD = true
+
+		open.Position = UDim2.new(
+			startPosHD.X.Scale,
+			startPosHD.X.Offset + delta.X,
+			startPosHD.Y.Scale,
+			startPosHD.Y.Offset + delta.Y
+		)
 	end
 
 end)
+
+---------------------------------------------------
+-- FIM DO ARRASTE
+---------------------------------------------------
 
 UIS.InputEnded:Connect(function(input)
 
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+	local isMouseRelease =
+		input.UserInputType == Enum.UserInputType.MouseButton1
 
-		if movedHD then
-			ignoreNextClick = true
+	local isTouchRelease =
+		input.UserInputType == Enum.UserInputType.Touch
+		and input == activeInputHD
 
-			task.delay(0.15,function()
-				ignoreNextClick = false
-			end)
-		end
+	if not isMouseRelease and not isTouchRelease then
+		return
+	end
 
-		draggingHD = false
+	if movedHD then
+
+		ignoreNextClick = true
+
+		task.delay(0.15, function()
+			ignoreNextClick = false
+		end)
 
 	end
 
+	draggingHD = false
+	activeInputHD = nil
+
 end)
+
+---------------------------------------------------
+-- ABRIR E FECHAR O PAINEL
+---------------------------------------------------
 
 open.MouseButton1Click:Connect(function()
 
@@ -195,36 +239,46 @@ Instance.new("UICorner",minimize)
 -- SCROLL
 ---------------------------------------------------
 
+-- SCROLLINGFRAME RESPONSIVO
+
 local scroll = Instance.new("ScrollingFrame")
+scroll.Name = "CommandScroll"
 scroll.Parent = frame
 
-scroll.Position = UDim2.new(0,10,0,50)
-scroll.Size = UDim2.new(1,-20,1,-60)
+scroll.Position = UDim2.new(0, 10, 0, 50)
+scroll.Size = UDim2.new(1, -20, 1, -60)
 
 scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+
 scroll.ScrollBarThickness = 6
-scroll.CanvasSize = UDim2.new(0,0,0,1200)
+scroll.ScrollBarImageColor3 = Color3.fromRGB(180, 180, 180)
 
----------------------------------------------------
--- LAYOUT
----------------------------------------------------
+scroll.Active = true
+scroll.ScrollingEnabled = true
+scroll.ScrollingDirection = Enum.ScrollingDirection.Y
 
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+scroll.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+scroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
+
+-- Layout dos comandos
 local layout = Instance.new("UIListLayout")
 layout.Parent = scroll
 
-layout.Padding = UDim.new(0,8)
-layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0, 6)
 
+-- Atualiza a área rolável conforme os comandos são adicionados
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-
-	scroll.CanvasSize =
-		UDim2.new(
-			0,
-			0,
-			0,
-			layout.AbsoluteContentSize.Y+15
-		)
-
+	scroll.CanvasSize = UDim2.new(
+		0,
+		0,
+		0,
+		layout.AbsoluteContentSize.Y + 10
+	)
 end)
 
 -- RESPONSIVIDADE AUTOMÁTICA DO HD ADMIN
@@ -294,47 +348,86 @@ workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(ConnectCamera)
 ConnectCamera()
 
 ---------------------------------------------------
--- ARRASTAR
+-- HD ADMIN FRAME — ARRASTÁVEL NO PC E MOBILE
 ---------------------------------------------------
 
-local dragging=false
-local dragStart
-local startPos
+local draggingFrame = false
+local dragStartFrame = nil
+local startPosFrame = nil
+
+local activeInputFrame = nil
+
+---------------------------------------------------
+-- INÍCIO DO ARRASTE
+---------------------------------------------------
 
 top.InputBegan:Connect(function(input)
 
-	if input.UserInputType==Enum.UserInputType.MouseButton1 then
-
-		dragging=true
-		dragStart=input.Position
-		startPos=frame.Position
-
-		input.Changed:Connect(function()
-
-			if input.UserInputState==Enum.UserInputState.End then
-				dragging=false
-			end
-
-		end)
-
+	if input.UserInputType ~= Enum.UserInputType.MouseButton1
+		and input.UserInputType ~= Enum.UserInputType.Touch then
+		return
 	end
+
+	draggingFrame = true
+
+	dragStartFrame = input.Position
+	startPosFrame = frame.Position
+
+	activeInputFrame = input
 
 end)
 
+---------------------------------------------------
+-- MOVIMENTO
+---------------------------------------------------
+
 UIS.InputChanged:Connect(function(input)
 
-	if dragging and input.UserInputType==Enum.UserInputType.MouseMovement then
-
-		local delta=input.Position-dragStart
-
-		frame.Position=UDim2.new(
-			startPos.X.Scale,
-			startPos.X.Offset+delta.X,
-			startPos.Y.Scale,
-			startPos.Y.Offset+delta.Y
-		)
-
+	if not draggingFrame then
+		return
 	end
+
+	local isMouseMovement =
+		input.UserInputType == Enum.UserInputType.MouseMovement
+
+	local isTouchMovement =
+		input.UserInputType == Enum.UserInputType.Touch
+		and input == activeInputFrame
+
+	if not isMouseMovement and not isTouchMovement then
+		return
+	end
+
+	local delta = input.Position - dragStartFrame
+
+	frame.Position = UDim2.new(
+		startPosFrame.X.Scale,
+		startPosFrame.X.Offset + delta.X,
+		startPosFrame.Y.Scale,
+		startPosFrame.Y.Offset + delta.Y
+	)
+
+end)
+
+---------------------------------------------------
+-- FIM DO ARRASTE
+---------------------------------------------------
+
+UIS.InputEnded:Connect(function(input)
+
+	local isMouseRelease =
+		input.UserInputType == Enum.UserInputType.MouseButton1
+
+	local isTouchRelease =
+		input.UserInputType == Enum.UserInputType.Touch
+		and input == activeInputFrame
+
+	if not isMouseRelease and not isTouchRelease then
+		return
+	end
+
+	draggingFrame = false
+	activeInputFrame = nil
 
 end)
 
@@ -694,7 +787,7 @@ flyButton.TextSize = 20
 Instance.new("UICorner",flyButton)
 
 ---------------------------------------------------
--- VARIÁVEIS
+-- HD ADMIN FLY — PC + MOBILE
 ---------------------------------------------------
 
 local flyEnabled = false
@@ -704,7 +797,6 @@ local flySpeed = 50
 
 local bodyVelocity = nil
 local bodyGyro = nil
-
 local flyConnection = nil
 
 ---------------------------------------------------
@@ -760,11 +852,7 @@ end
 
 local function StartFlying()
 
-	if not flyEnabled then
-		return
-	end
-
-	if flying then
+	if not flyEnabled or flying then
 		return
 	end
 
@@ -781,16 +869,11 @@ local function StartFlying()
 	-- VELOCIDADE
 	---------------------------------------------------
 
-	flySpeed =
-		tonumber(flyBox.Text) or 50
+	flySpeed = tonumber(flyBox.Text) or 50
 
 	if flySpeed < 1 then
 		flySpeed = 50
 	end
-
-	---------------------------------------------------
-	-- ESTADO
-	---------------------------------------------------
 
 	flying = true
 
@@ -803,11 +886,10 @@ local function StartFlying()
 
 	if animator then
 
-		for _,track in
-			ipairs(animator:GetPlayingAnimationTracks()) do
-
+		for _, track in ipairs(
+			animator:GetPlayingAnimationTracks()
+			) do
 			track:Stop(0.1)
-
 		end
 
 	end
@@ -830,20 +912,15 @@ local function StartFlying()
 	bodyGyro = Instance.new("BodyGyro")
 
 	bodyGyro.Name = "HDFlyGyro"
-
-	bodyGyro.MaxTorque =
-		Vector3.new(
-			math.huge,
-			math.huge,
-			math.huge
-		)
+	bodyGyro.MaxTorque = Vector3.new(
+		math.huge,
+		math.huge,
+		math.huge
+	)
 
 	bodyGyro.P = 10000
 	bodyGyro.D = 500
-
-	bodyGyro.CFrame =
-		workspace.CurrentCamera.CFrame
-
+	bodyGyro.CFrame = workspace.CurrentCamera.CFrame
 	bodyGyro.Parent = hrp
 
 	---------------------------------------------------
@@ -853,143 +930,141 @@ local function StartFlying()
 	bodyVelocity = Instance.new("BodyVelocity")
 
 	bodyVelocity.Name = "HDFlyVelocity"
-
-	bodyVelocity.MaxForce =
-		Vector3.new(
-			math.huge,
-			math.huge,
-			math.huge
-		)
+	bodyVelocity.MaxForce = Vector3.new(
+		math.huge,
+		math.huge,
+		math.huge
+	)
 
 	bodyVelocity.P = 10000
-
-	bodyVelocity.Velocity =
-		Vector3.zero
-
+	bodyVelocity.Velocity = Vector3.zero
 	bodyVelocity.Parent = hrp
 
 	---------------------------------------------------
 	-- MOVIMENTO
 	---------------------------------------------------
 
-	flyConnection =
-		RunService.RenderStepped:Connect(function()
+	flyConnection = RunService.RenderStepped:Connect(function()
 
-			if not flyEnabled then
-				return
+		if not flyEnabled or not flying then
+			return
+		end
+
+		if not character.Parent or not hrp.Parent then
+			StopFlying()
+			return
+		end
+
+		if not bodyGyro or not bodyVelocity then
+			return
+		end
+
+		local camera = workspace.CurrentCamera
+
+		if not camera then
+			return
+		end
+
+		---------------------------------------------------
+		-- ROTAÇÃO DA CÂMERA
+		---------------------------------------------------
+
+		bodyGyro.CFrame = camera.CFrame
+
+		---------------------------------------------------
+		-- MOVIMENTO RELATIVO À CÂMERA
+		---------------------------------------------------
+
+		local velocity = Vector3.zero
+
+		if not UIS:GetFocusedTextBox() then
+
+			-- PC: teclado
+			local forwardInput = 0
+			local rightInput = 0
+
+			if UIS:IsKeyDown(Enum.KeyCode.W) then
+				forwardInput += 1
 			end
 
-			if not flying then
-				return
+			if UIS:IsKeyDown(Enum.KeyCode.S) then
+				forwardInput -= 1
 			end
 
-			if not character.Parent then
-				return
+			if UIS:IsKeyDown(Enum.KeyCode.D) then
+				rightInput += 1
 			end
 
-			if not hrp.Parent then
-				return
+			if UIS:IsKeyDown(Enum.KeyCode.A) then
+				rightInput -= 1
 			end
 
-			local camera =
-			workspace.CurrentCamera
+			-- Mobile e controles: joystick
+			local moveDirection = humanoid.MoveDirection
 
-			if not camera then
-				return
-			end
+			if moveDirection.Magnitude > 0.05 then
 
-			---------------------------------------------------
-			-- OLHA PARA ONDE A CÂMERA ESTÁ OLHANDO
-			---------------------------------------------------
+				local cameraForward = Vector3.new(
+					camera.CFrame.LookVector.X,
+					0,
+					camera.CFrame.LookVector.Z
+				)
 
-			bodyGyro.CFrame =
-			camera.CFrame
+				local cameraRight = Vector3.new(
+					camera.CFrame.RightVector.X,
+					0,
+					camera.CFrame.RightVector.Z
+				)
 
-			---------------------------------------------------
-			-- VELOCIDADE
-			---------------------------------------------------
-
-			local velocity =
-			Vector3.zero
-
-			---------------------------------------------------
-			-- SÓ MOVIMENTA SE NÃO ESTIVER ESCREVENDO
-			---------------------------------------------------
-
-			if not UIS:GetFocusedTextBox() then
-
-				if UIS:IsKeyDown(Enum.KeyCode.W) then
-
-					velocity +=
-					camera.CFrame.LookVector
-
+				if cameraForward.Magnitude > 0 then
+					cameraForward = cameraForward.Unit
 				end
 
-				if UIS:IsKeyDown(Enum.KeyCode.S) then
-
-					velocity -=
-					camera.CFrame.LookVector
-
+				if cameraRight.Magnitude > 0 then
+					cameraRight = cameraRight.Unit
 				end
 
-				if UIS:IsKeyDown(Enum.KeyCode.A) then
+				forwardInput =
+					moveDirection:Dot(cameraForward)
 
-					velocity -=
-					camera.CFrame.RightVector
-
-				end
-
-				if UIS:IsKeyDown(Enum.KeyCode.D) then
-
-					velocity +=
-					camera.CFrame.RightVector
-
-				end
-
-				---------------------------------------------------
-				-- ESPAÇO = SUBIR
-				---------------------------------------------------
-
-				if UIS:IsKeyDown(Enum.KeyCode.Space) then
-
-					velocity +=
-					Vector3.new(0,1,0)
-
-				end
-
-				---------------------------------------------------
-				-- CTRL = DESCER
-				---------------------------------------------------
-
-				if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
-
-					velocity -=
-					Vector3.new(0,1,0)
-
-				end
+				rightInput =
+					moveDirection:Dot(cameraRight)
 
 			end
 
+			-- Usa a direção COMPLETA da câmera,
+			-- incluindo a inclinação vertical.
+			velocity +=
+				camera.CFrame.LookVector * forwardInput
+
+			velocity +=
+				camera.CFrame.RightVector * rightInput
+
 			---------------------------------------------------
-			-- APLICA VELOCIDADE
+			-- SUBIR E DESCER NO PC
 			---------------------------------------------------
 
-			if velocity.Magnitude > 0 then
-
-				velocity =
-				velocity.Unit * flySpeed
-
-			else
-
-				velocity =
-				Vector3.zero
-
+			if UIS:IsKeyDown(Enum.KeyCode.Space) then
+				velocity += Vector3.new(0, 1, 0)
 			end
 
-			bodyVelocity.Velocity =
-			velocity
+			if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
+				velocity -= Vector3.new(0, 1, 0)
+			end
 
-		end)
+		end
+
+		---------------------------------------------------
+		-- NORMALIZA A VELOCIDADE
+		---------------------------------------------------
+
+		if velocity.Magnitude > 1 then
+			velocity = velocity.Unit
+		end
+
+		bodyVelocity.Velocity = velocity * flySpeed
+
+	end)
 
 end
 
