@@ -11,6 +11,7 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "HDGui"
 gui.ResetOnSpawn = false
 gui.Parent = player.PlayerGui
+gui.IgnoreGuiInset = true
 
 ---------------------------------------------------
 -- BOTÃO HD
@@ -133,6 +134,24 @@ UIS.InputEnded:Connect(function(input)
 end)
 
 ---------------------------------------------------
+-- MENU
+---------------------------------------------------
+
+local frame = Instance.new("Frame")
+frame.Parent = gui
+
+frame.Size = UDim2.fromOffset(430, 500)
+
+-- Centraliza a interface na tela
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.Position = UDim2.fromScale(0.5, 0.5)
+
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.Visible = false
+
+Instance.new("UICorner", frame)
+
+---------------------------------------------------
 -- ABRIR E FECHAR O PAINEL
 ---------------------------------------------------
 
@@ -145,25 +164,6 @@ open.MouseButton1Click:Connect(function()
 	frame.Visible = not frame.Visible
 
 end)
-
----------------------------------------------------
--- MENU
----------------------------------------------------
-
-local frame = Instance.new("Frame")
-frame.Parent = gui
-
-frame.Name = "Gui"
-frame.Size = UDim2.fromOffset(430, 500)
-
--- Centraliza a interface na tela
-frame.AnchorPoint = Vector2.new(0.5, 0.5)
-frame.Position = UDim2.fromScale(0.5, 0.5)
-
-frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-frame.Visible = false
-
-Instance.new("UICorner", frame)
 
 ---------------------------------------------------
 -- TOPO
@@ -348,14 +348,83 @@ workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(ConnectCamera)
 ConnectCamera()
 
 ---------------------------------------------------
--- HD ADMIN FRAME — ARRASTÁVEL NO PC E MOBILE
+-- HD ADMIN FRAME: ARRASTE E CENTRALIZAÇÃO
+-- PC + MOBILE
 ---------------------------------------------------
 
 local draggingFrame = false
 local dragStartFrame = nil
 local startPosFrame = nil
-
 local activeInputFrame = nil
+
+---------------------------------------------------
+-- LIMITAR O PAINEL À TELA
+---------------------------------------------------
+
+local function KeepFrameOnScreen()
+
+	if not frame or not frame.Parent then
+		return
+	end
+
+	local camera = workspace.CurrentCamera
+
+	if not camera then
+		return
+	end
+
+	local viewport = camera.ViewportSize
+	local size = frame.AbsoluteSize
+	local anchor = frame.AnchorPoint
+
+	-- Converte a posição atual para coordenadas da tela.
+	local x =
+		frame.Position.X.Scale * viewport.X
+		+ frame.Position.X.Offset
+
+	local y =
+		frame.Position.Y.Scale * viewport.Y
+		+ frame.Position.Y.Offset
+
+	-- Limites horizontais.
+	local minX = size.X * anchor.X
+	local maxX = viewport.X - size.X * (1 - anchor.X)
+
+	-- Limites verticais.
+	local minY = size.Y * anchor.Y
+	local maxY = viewport.Y - size.Y * (1 - anchor.Y)
+
+	-- Se o painel for maior que a tela, centraliza nesse eixo.
+	if minX > maxX then
+		minX = viewport.X / 2
+		maxX = minX
+	end
+
+	if minY > maxY then
+		minY = viewport.Y / 2
+		maxY = minY
+	end
+
+	x = math.clamp(x, minX, maxX)
+	y = math.clamp(y, minY, maxY)
+
+	-- Usa sempre a mesma referência de coordenadas.
+	frame.Position = UDim2.fromOffset(x, y)
+
+end
+
+---------------------------------------------------
+-- CENTRALIZAR O PAINEL
+---------------------------------------------------
+
+local function CenterHDFrame()
+
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.Position = UDim2.fromScale(0.5, 0.5)
+
+	task.defer(KeepFrameOnScreen)
+
+end
 
 ---------------------------------------------------
 -- INÍCIO DO ARRASTE
@@ -369,10 +438,8 @@ top.InputBegan:Connect(function(input)
 	end
 
 	draggingFrame = true
-
 	dragStartFrame = input.Position
 	startPosFrame = frame.Position
-
 	activeInputFrame = input
 
 end)
@@ -400,12 +467,24 @@ UIS.InputChanged:Connect(function(input)
 
 	local delta = input.Position - dragStartFrame
 
-	frame.Position = UDim2.new(
-		startPosFrame.X.Scale,
-		startPosFrame.X.Offset + delta.X,
-		startPosFrame.Y.Scale,
-		startPosFrame.Y.Offset + delta.Y
-	)
+	-- Calcula a posição usando o ponto inicial do arraste.
+	local viewport = workspace.CurrentCamera.ViewportSize
+
+	local x =
+		startPosFrame.X.Scale * viewport.X
+		+ startPosFrame.X.Offset
+		+ delta.X
+
+	local y =
+		startPosFrame.Y.Scale * viewport.Y
+		+ startPosFrame.Y.Offset
+		+ delta.Y
+
+	frame.Position = UDim2.fromOffset(x, y)
+
+	-- Mantém o painel dentro da tela sem recalcular
+	-- a posição inicial do arraste.
+	KeepFrameOnScreen()
 
 end)
 
@@ -429,21 +508,75 @@ UIS.InputEnded:Connect(function(input)
 	draggingFrame = false
 	activeInputFrame = nil
 
+	KeepFrameOnScreen()
+
 end)
+
+---------------------------------------------------
+-- TAMANHO ALTERADO: RECALCULAR OS LIMITES
+---------------------------------------------------
+
+frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+
+	task.defer(KeepFrameOnScreen)
+
+end)
+
+---------------------------------------------------
+-- ABRIR CENTRALIZADO
+---------------------------------------------------
+
+frame:GetPropertyChangedSignal("Visible"):Connect(function()
+
+	if frame.Visible then
+		task.defer(CenterHDFrame)
+	end
+
+end)
+
+---------------------------------------------------
+-- RESOLUÇÃO ALTERADA
+---------------------------------------------------
+
+local connectedCamera = nil
+local viewportConnection = nil
+
+local function ConnectHDFrameCamera()
+
+	if viewportConnection then
+		viewportConnection:Disconnect()
+		viewportConnection = nil
+	end
+
+	connectedCamera = workspace.CurrentCamera
+
+	if connectedCamera then
+
+		viewportConnection =
+			connectedCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+
+				KeepFrameOnScreen()
+
+			end)
+
+	end
+
+end
+
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(
+	ConnectHDFrameCamera
+)
+
+ConnectHDFrameCamera()
 
 ---------------------------------------------------
 -- BOTÕES
 ---------------------------------------------------
 
-open.MouseButton1Click:Connect(function()
-
-	frame.Visible=not frame.Visible
-
-end)
-
 close.MouseButton1Click:Connect(function()
 
 	frame.Visible=false
+	task.defer(KeepFrameOnScreen)
 
 end)
 
@@ -458,10 +591,12 @@ minimize.MouseButton1Click:Connect(function()
 	if minimized then
 
 		frame.Size=UDim2.fromOffset(430,40)
+		task.defer(KeepFrameOnScreen)
 
 	else
 
 		frame.Size=UDim2.fromOffset(430,500)
+		task.defer(KeepFrameOnScreen)
 
 	end
 
@@ -1993,58 +2128,123 @@ tpToolButton.BackgroundColor3 = Color3.fromRGB(0,170,255)
 Instance.new("UICorner", tpToolButton)
 
 ---------------------------------------------------
--- TP TOOL
+-- TP TOOL — PEGAR PELO PAINEL E RECUPERAR AO MORRER
 ---------------------------------------------------
 
-local tpTool
+local tpTool = nil
+local tpToolRequested = false
+
+---------------------------------------------------
+-- CRIAR A TP TOOL
+---------------------------------------------------
 
 local function CreateTPTool()
 
-	if tpTool and tpTool.Parent then
-		return
-	end
-
 	local backpack = player:WaitForChild("Backpack")
 
-	if backpack:FindFirstChild("HD TP Tool") then
-		tpTool = backpack:FindFirstChild("HD TP Tool")
+	-- Se a ferramenta já estiver no inventário, reutiliza.
+	local existingTool = backpack:FindFirstChild("HD TP Tool")
+
+	if existingTool then
+		tpTool = existingTool
 		return
 	end
 
-	tpTool = Instance.new("Tool")
-	tpTool.Name = "HD TP Tool"
-	tpTool.RequiresHandle = false
-	tpTool.CanBeDropped = false
+	-- Se estiver equipada, não cria outra cópia.
+	local character = player.Character
 
-	tpTool.Activated:Connect(function()
+	if character then
+
+		local equippedTool = character:FindFirstChild("HD TP Tool")
+
+		if equippedTool then
+			tpTool = equippedTool
+			return
+		end
+
+	end
+
+	---------------------------------------------------
+	-- CRIAR FERRAMENTA
+	---------------------------------------------------
+
+	local newTool = Instance.new("Tool")
+
+	newTool.Name = "HD TP Tool"
+	newTool.RequiresHandle = false
+	newTool.CanBeDropped = false
+
+	---------------------------------------------------
+	-- TELETRANSPORTE
+	---------------------------------------------------
+
+	newTool.Activated:Connect(function()
 
 		local mouse = player:GetMouse()
 
-		local character = player.Character
-		local hrp = character and character:FindFirstChild("HumanoidRootPart")
+		local currentCharacter = player.Character
+
+		local hrp = currentCharacter
+			and currentCharacter:FindFirstChild("HumanoidRootPart")
 
 		if hrp then
-			hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0,3,0))
+
+			hrp.CFrame = CFrame.new(
+				mouse.Hit.Position + Vector3.new(0, 3, 0)
+			)
+
 		end
 
 	end)
 
-	tpTool.Parent = backpack
+	---------------------------------------------------
+	-- ENTREGAR AO JOGADOR
+	---------------------------------------------------
+
+	tpTool = newTool
+	newTool.Parent = backpack
 
 end
 
+---------------------------------------------------
+-- BOTÃO PEGAR
+---------------------------------------------------
+
 tpToolButton.MouseButton1Click:Connect(function()
+
+	-- Registra que o jogador solicitou a ferramenta.
+	tpToolRequested = true
 
 	CreateTPTool()
 
 	tpToolButton.Text = "PEGO!"
-	tpToolButton.BackgroundColor3 = Color3.fromRGB(0,255,0)
+	tpToolButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 
-	task.wait(1)
+	task.delay(1, function()
 
-	if tpToolButton.Parent then
-		tpToolButton.Text = "PEGAR"
-		tpToolButton.BackgroundColor3 = Color3.fromRGB(0,170,255)
+		if tpToolButton.Parent then
+
+			tpToolButton.Text = "PEGAR"
+			tpToolButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+
+		end
+
+	end)
+
+end)
+
+---------------------------------------------------
+-- RECUPERAR APÓS RENASCER
+---------------------------------------------------
+
+player.CharacterAdded:Connect(function()
+
+	task.wait(0.5)
+
+	-- Só recupera automaticamente se já tiver solicitado
+	-- a TP Tool pelo botão PEGAR anteriormente.
+	if tpToolRequested then
+		CreateTPTool()
 	end
 
 end)
