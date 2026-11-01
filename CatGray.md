@@ -155,13 +155,39 @@ Instance.new("UICorner", frame)
 -- ABRIR E FECHAR O PAINEL
 ---------------------------------------------------
 
+---------------------------------------------------
+-- ABRIR / FECHAR HD ADMIN
+-- CENTRALIZA SOMENTE NA PRIMEIRA ABERTURA
+---------------------------------------------------
+
+local hasOpenedBefore = false
+
 open.MouseButton1Click:Connect(function()
 
 	if ignoreNextClick then
 		return
 	end
 
-	frame.Visible = not frame.Visible
+	if frame.Visible then
+
+		-- Fecha sem alterar a posição.
+		frame.Visible = false
+
+	else
+
+		-- Centraliza somente na primeira abertura.
+		if not hasOpenedBefore then
+
+			frame.AnchorPoint = Vector2.new(0.5, 0.5)
+			frame.Position = UDim2.fromScale(0.5, 0.5)
+
+			hasOpenedBefore = true
+
+		end
+
+		frame.Visible = true
+
+	end
 
 end)
 
@@ -171,6 +197,7 @@ end)
 
 local top = Instance.new("Frame")
 top.Parent = frame
+top.Position = UDim2.new(0, 0, 0, 0)
 top.Size = UDim2.new(1,0,0,40)
 top.Name = "Top"
 
@@ -378,13 +405,10 @@ local function KeepFrameOnScreen()
 	local anchor = frame.AnchorPoint
 
 	-- Converte a posição atual para coordenadas da tela.
-	local x =
-		frame.Position.X.Scale * viewport.X
-		+ frame.Position.X.Offset
+	local absolutePosition = frame.AbsolutePosition
 
-	local y =
-		frame.Position.Y.Scale * viewport.Y
-		+ frame.Position.Y.Offset
+	local x = absolutePosition.X + size.X * anchor.X
+	local y = absolutePosition.Y + size.Y * anchor.Y
 
 	-- Limites horizontais.
 	local minX = size.X * anchor.X
@@ -409,20 +433,36 @@ local function KeepFrameOnScreen()
 	y = math.clamp(y, minY, maxY)
 
 	-- Usa sempre a mesma referência de coordenadas.
+	-- Limita a posição durante o arraste, sem saltos ao soltar.
+	local camera = workspace.CurrentCamera
+
+	if camera then
+		local viewport = camera.ViewportSize
+		local size = frame.AbsoluteSize
+		local anchor = frame.AnchorPoint
+
+		local minX = size.X * anchor.X
+		local maxX = viewport.X - size.X * (1 - anchor.X)
+
+		local minY = size.Y * anchor.Y
+		local maxY = viewport.Y - size.Y * (1 - anchor.Y)
+
+		-- Garante limites válidos mesmo em telas pequenas.
+		if minX > maxX then
+			minX = viewport.X / 2
+			maxX = minX
+		end
+
+		if minY > maxY then
+			minY = viewport.Y / 2
+			maxY = minY
+		end
+
+		x = math.clamp(x, minX, maxX)
+		y = math.clamp(y, minY, maxY)
+	end
+
 	frame.Position = UDim2.fromOffset(x, y)
-
-end
-
----------------------------------------------------
--- CENTRALIZAR O PAINEL
----------------------------------------------------
-
-local function CenterHDFrame()
-
-	frame.AnchorPoint = Vector2.new(0.5, 0.5)
-	frame.Position = UDim2.fromScale(0.5, 0.5)
-
-	task.defer(KeepFrameOnScreen)
 
 end
 
@@ -480,20 +520,46 @@ UIS.InputChanged:Connect(function(input)
 		+ startPosFrame.Y.Offset
 		+ delta.Y
 
+	-- Atualiza a posição calculada durante o arraste.
+	-- Limita a posição durante o arraste, sem saltos ao soltar.
+	local camera = workspace.CurrentCamera
+
+	if camera then
+		local viewport = camera.ViewportSize
+		local size = frame.AbsoluteSize
+		local anchor = frame.AnchorPoint
+
+		local minX = size.X * anchor.X
+		local maxX = viewport.X - size.X * (1 - anchor.X)
+
+		local minY = size.Y * anchor.Y
+		local maxY = viewport.Y - size.Y * (1 - anchor.Y)
+
+		-- Garante limites válidos mesmo em telas pequenas.
+		if minX > maxX then
+			minX = viewport.X / 2
+			maxX = minX
+		end
+
+		if minY > maxY then
+			minY = viewport.Y / 2
+			maxY = minY
+		end
+
+		x = math.clamp(x, minX, maxX)
+		y = math.clamp(y, minY, maxY)
+	end
+
 	frame.Position = UDim2.fromOffset(x, y)
-
-	-- Mantém o painel dentro da tela sem recalcular
-	-- a posição inicial do arraste.
-	KeepFrameOnScreen()
-
 end)
 
 ---------------------------------------------------
--- FIM DO ARRASTE
+-- FIM DO ARRASTE — SEM PULO DE POSIÇÃO
 ---------------------------------------------------
 
 UIS.InputEnded:Connect(function(input)
 
+	
 	local isMouseRelease =
 		input.UserInputType == Enum.UserInputType.MouseButton1
 
@@ -508,31 +574,13 @@ UIS.InputEnded:Connect(function(input)
 	draggingFrame = false
 	activeInputFrame = nil
 
-	KeepFrameOnScreen()
+	-- Não recalcula a posição ao soltar.
+	-- O painel já foi limitado durante o movimento
+	-- quando necessário por outras partes do sistema.
+	
 
 end)
 
----------------------------------------------------
--- TAMANHO ALTERADO: RECALCULAR OS LIMITES
----------------------------------------------------
-
-frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-
-	task.defer(KeepFrameOnScreen)
-
-end)
-
----------------------------------------------------
--- ABRIR CENTRALIZADO
----------------------------------------------------
-
-frame:GetPropertyChangedSignal("Visible"):Connect(function()
-
-	if frame.Visible then
-		task.defer(CenterHDFrame)
-	end
-
-end)
 
 ---------------------------------------------------
 -- RESOLUÇÃO ALTERADA
@@ -574,33 +622,70 @@ ConnectHDFrameCamera()
 ---------------------------------------------------
 
 close.MouseButton1Click:Connect(function()
-
-	frame.Visible=false
-	task.defer(KeepFrameOnScreen)
-
+	frame.Visible = false
 end)
 
-local minimized=false
+---------------------------------------------------
+-- MINIMIZAR / RESTAURAR SEM TELETRANSPORTE
+---------------------------------------------------
+
+local minimized = false
+
+local expandedSize = UDim2.fromOffset(430, 500)
+local minimizedSize = UDim2.fromOffset(430, 40)
+
+---
+
+ -- MINIMIZAR / RESTAURAR SEM DESLOCAR A BARRA
 
 minimize.MouseButton1Click:Connect(function()
 
-	minimized=not minimized
+	
+	-- Guarda a posição visual do topo antes de mudar o tamanho.
+	local oldTopY = frame.AbsolutePosition.Y
 
-	scroll.Visible=not minimized
+	minimized = not minimized
 
 	if minimized then
-
-		frame.Size=UDim2.fromOffset(430,40)
-		task.defer(KeepFrameOnScreen)
-
+		scroll.Visible = false
+		frame.Size = minimizedSize
 	else
-
-		frame.Size=UDim2.fromOffset(430,500)
-		task.defer(KeepFrameOnScreen)
-
+		frame.Size = expandedSize
+		scroll.Visible = true
 	end
 
+	-- Espera o Roblox atualizar o tamanho visual.
+	task.defer(function()
+
+		if not frame or not frame.Parent then
+			return
+		end
+
+		local camera = workspace.CurrentCamera
+		if not camera then
+			return
+		end
+
+		local newHeight = frame.AbsoluteSize.Y
+		local anchorY = frame.AnchorPoint.Y
+
+		-- Calcula a posição necessária para preservar o topo.
+		local positionY = oldTopY + newHeight * anchorY
+
+		frame.Position = UDim2.new(
+			frame.Position.X.Scale,
+			frame.Position.X.Offset,
+			0,
+			positionY
+		)
+
+		KeepFrameOnScreen()
+
+	end)
+	
+
 end)
+
 
 ---------------------------------------------------
 -- VELOCIDADE
@@ -3433,4 +3518,266 @@ player.CharacterAdded:Connect(function()
 
 	end
 
+end)
+
+---------------------------------------------------
+-- TOUCH FLING
+---------------------------------------------------
+
+local touchFlingFrame = Instance.new("Frame")
+touchFlingFrame.Parent = scroll
+touchFlingFrame.Size = UDim2.new(1,-10,0,70)
+touchFlingFrame.BackgroundColor3 = Color3.fromRGB(35,35,35)
+
+Instance.new("UICorner",touchFlingFrame)
+
+---------------------------------------------------
+-- TÍTULO
+---------------------------------------------------
+
+local touchFlingTitle = Instance.new("TextLabel")
+touchFlingTitle.Parent = touchFlingFrame
+touchFlingTitle.BackgroundTransparency = 1
+touchFlingTitle.Position = UDim2.new(0,10,0,5)
+touchFlingTitle.Size = UDim2.new(0,200,0,25)
+
+touchFlingTitle.Text = "Touch Fling (RISCO DE BAN)"
+touchFlingTitle.TextColor3 = Color3.new(1,1,1)
+touchFlingTitle.Font = Enum.Font.GothamBold
+touchFlingTitle.TextSize = 18
+touchFlingTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+---------------------------------------------------
+-- BOTÃO
+---------------------------------------------------
+
+local touchFlingButton = Instance.new("TextButton")
+touchFlingButton.Parent = touchFlingFrame
+touchFlingButton.Position = UDim2.new(1,-140,0,15)
+touchFlingButton.Size = UDim2.new(0,120,0,40)
+
+touchFlingButton.Text = "OFF"
+touchFlingButton.BackgroundColor3 = Color3.fromRGB(255,0,0)
+touchFlingButton.TextColor3 = Color3.new(1,1,1)
+touchFlingButton.Font = Enum.Font.GothamBold
+touchFlingButton.TextSize = 20
+
+Instance.new("UICorner",touchFlingButton)
+
+---------------------------------------------------
+-- LÓGICA
+---------------------------------------------------
+
+local character = player.Character or player.CharacterAdded:Wait()
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+local flingEnabled = false
+
+local FLING_POWER = 1e6  -- força fixa somada
+local FLING_MULT  = 10000     -- multiplicador da sua velocidade real
+local SPIN_POWER  = 99999  -- giro no eixo Y (só o servidor vê)
+
+-- Limites ANTI-ARRASTO (o que conta como "movimento normal" seu)
+local MAX_SPEED = 40          -- velocidade horizontal máxima aceita
+local MAX_JUMP  = 60          -- velocidade máxima para cima
+local MAX_FALL  = 200         -- velocidade máxima de queda
+local MAX_STEP  = 10          -- studs por frame; acima disso = foi arrastado
+local TELEPORT_FRAMES = 30    -- frames até aceitar como teleporte do painel
+
+local heartbeatConn, renderConn, steppedConn
+
+-- Estado real (o que a SUA tela mostra)
+local realCFrame, realLinear, realAngular = nil, Vector3.zero, Vector3.zero
+local offsetSign = 1
+
+-- Anti-arrasto
+local lastSafeCFrame = nil
+local rejectCount = 0
+
+-- Colisão original das partes (para restaurar ao desligar)
+local originalCollide = {}
+
+local ARM_NAMES = {
+	["LeftUpperArm"] = true, ["LeftLowerArm"] = true, ["LeftHand"] = true,
+	["RightUpperArm"] = true, ["RightLowerArm"] = true, ["RightHand"] = true,
+	["Left Arm"] = true, ["Right Arm"] = true, -- R6
+}
+
+local function getHumanoid()
+	return character and character:FindFirstChildOfClass("Humanoid")
+end
+
+local function isValid()
+	return character
+		and rootPart
+		and rootPart.Parent
+		and getHumanoid() ~= nil
+end
+
+---------------------------------------------------
+-- COLISÃO APENAS NOS BRAÇOS
+---------------------------------------------------
+
+local function applyArmCollision()
+	if not character then return end
+	for _, part in ipairs(character:GetDescendants()) do
+		if part:IsA("BasePart") then
+			if originalCollide[part] == nil then
+				originalCollide[part] = part.CanCollide
+			end
+			part.CanCollide = ARM_NAMES[part.Name] == true
+		end
+	end
+end
+
+local function restoreCollision()
+	for part, value in pairs(originalCollide) do
+		if part and part.Parent then
+			part.CanCollide = value
+		end
+	end
+	table.clear(originalCollide)
+end
+
+---------------------------------------------------
+-- CONTROLE DE CONEXÕES
+---------------------------------------------------
+
+local function disconnectAll()
+	if heartbeatConn then heartbeatConn:Disconnect() heartbeatConn = nil end
+	if renderConn then renderConn:Disconnect() renderConn = nil end
+	if steppedConn then steppedConn:Disconnect() steppedConn = nil end
+end
+
+local function restoreReal()
+	if realCFrame and rootPart and rootPart.Parent then
+		rootPart.CFrame = realCFrame
+		rootPart.AssemblyLinearVelocity = realLinear
+		rootPart.AssemblyAngularVelocity = realAngular
+	end
+	realCFrame = nil
+end
+
+-- Limita a velocidade para o impacto não virar "velocidade sua"
+local function clampVelocity(vel)
+	local horizontal = Vector3.new(vel.X, 0, vel.Z)
+	if horizontal.Magnitude > MAX_SPEED then
+		horizontal = horizontal.Unit * MAX_SPEED
+	end
+	local y = math.clamp(vel.Y, -MAX_FALL, MAX_JUMP)
+	return Vector3.new(horizontal.X, y, horizontal.Z)
+end
+
+local function startFling()
+	disconnectAll()
+	lastSafeCFrame = nil
+	rejectCount = 0
+
+	-- 1) HEARTBEAT: salva o estado real (já filtrado) e aplica o estado de fling
+	heartbeatConn = RunService.Heartbeat:Connect(function()
+		if not isValid() then return end
+
+		local cf = rootPart.CFrame
+		local lin = rootPart.AssemblyLinearVelocity
+
+		-- ANTI-ARRASTO: se fui jogado longe num frame, volto pra posição segura
+		if lastSafeCFrame then
+			local dist = (cf.Position - lastSafeCFrame.Position).Magnitude
+			if dist > MAX_STEP then
+				rejectCount += 1
+				if rejectCount < TELEPORT_FRAMES then
+					cf = lastSafeCFrame
+					lin = Vector3.zero
+				else
+					-- ficou muito tempo deslocado: foi teleporte do painel
+					rejectCount = 0
+					lastSafeCFrame = cf
+				end
+			else
+				rejectCount = 0
+				lastSafeCFrame = cf
+			end
+		else
+			lastSafeCFrame = cf
+		end
+
+		-- Impacto não vira sua velocidade real
+		lin = clampVelocity(lin)
+
+		realCFrame = cf
+		realLinear = lin
+		realAngular = Vector3.zero
+
+		-- Estado de fling (só o servidor enxerga)
+		rootPart.AssemblyLinearVelocity = (lin * FLING_MULT) + Vector3.new(FLING_POWER, FLING_POWER, FLING_POWER)
+		rootPart.AssemblyAngularVelocity = Vector3.new(0, SPIN_POWER, 0)
+		rootPart.CFrame = cf * CFrame.Angles(0, math.rad(math.random(0, 360)), 0)
+	end)
+
+	-- 2) RENDERSTEPPED: devolve o estado real antes da câmera desenhar
+	renderConn = RunService.RenderStepped:Connect(function()
+		if not isValid() then return end
+		restoreReal()
+	end)
+
+	-- 3) STEPPED: roda a cada passo de física
+	steppedConn = RunService.Stepped:Connect(function()
+		if not isValid() then return end
+
+		-- Mantém colisão só nos braços (o Humanoid tenta resetar isso)
+		applyArmCollision()
+
+		local humanoid = getHumanoid()
+		local climbing = humanoid and humanoid:GetState() == Enum.HumanoidStateType.Climbing
+
+		if climbing then
+			rootPart.AssemblyAngularVelocity = Vector3.new(0, SPIN_POWER, 0)
+			rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(math.random(0, 360)), 0)
+		else
+			offsetSign = -offsetSign
+			rootPart.AssemblyLinearVelocity = rootPart.AssemblyLinearVelocity + Vector3.new(0, 0.1 * offsetSign, 0)
+		end
+	end)
+end
+
+local function stopFling()
+	disconnectAll()
+	restoreReal()
+	restoreCollision()
+	lastSafeCFrame = nil
+	rejectCount = 0
+
+	if rootPart and rootPart.Parent then
+		rootPart.AssemblyLinearVelocity = Vector3.zero
+		rootPart.AssemblyAngularVelocity = Vector3.zero
+	end
+end
+
+local function updateFlingState()
+	if flingEnabled then
+		touchFlingButton.Text = "ON"
+		touchFlingButton.BackgroundColor3 = Color3.fromRGB(0,255,0)
+		startFling()
+	else
+		touchFlingButton.Text = "OFF"
+		touchFlingButton.BackgroundColor3 = Color3.fromRGB(255,0,0)
+		stopFling()
+	end
+end
+
+touchFlingButton.MouseButton1Click:Connect(function()
+	flingEnabled = not flingEnabled
+	updateFlingState()
+end)
+
+player.CharacterAdded:Connect(function(newChar)
+	disconnectAll()
+	table.clear(originalCollide)
+	character = newChar
+	rootPart = character:WaitForChild("HumanoidRootPart")
+	realCFrame = nil
+	lastSafeCFrame = nil
+	rejectCount = 0
+	flingEnabled = false
+	updateFlingState()
 end)
