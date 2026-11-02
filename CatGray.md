@@ -1951,7 +1951,7 @@ itemsTitle.Parent = itemsFrame
 itemsTitle.BackgroundTransparency = 1
 itemsTitle.Position = UDim2.new(0,10,0,5)
 itemsTitle.Size = UDim2.new(0,200,0,25)
-itemsTitle.Text = "ESP Itens"
+itemsTitle.Text = "ESP Items"
 itemsTitle.Font = Enum.Font.GothamBold
 itemsTitle.TextSize = 18
 itemsTitle.TextColor3 = Color3.new(1,1,1)
@@ -2056,7 +2056,7 @@ local function CreateItemESP()
 									if text == "" then
 										text = "[Equipado]\n"..tool.Name
 									else
-										text = text.."\n[Equipado] "..tool.Name
+										text = text.."\n[Equiped] "..tool.Name
 									end
 
 								end
@@ -2205,7 +2205,7 @@ local tpToolButton = Instance.new("TextButton")
 tpToolButton.Parent = tpToolFrame
 tpToolButton.Position = UDim2.new(1,-140,0,15)
 tpToolButton.Size = UDim2.new(0,120,0,40)
-tpToolButton.Text = "PEGAR"
+tpToolButton.Text = "Take"
 tpToolButton.Font = Enum.Font.GothamBold
 tpToolButton.TextSize = 20
 tpToolButton.TextColor3 = Color3.new(1,1,1)
@@ -2255,7 +2255,7 @@ local function CreateTPTool()
 
 	local newTool = Instance.new("Tool")
 
-	newTool.Name = "HD TP Tool"
+	newTool.Name = "TP Tool"
 	newTool.RequiresHandle = false
 	newTool.CanBeDropped = false
 
@@ -2302,14 +2302,14 @@ tpToolButton.MouseButton1Click:Connect(function()
 
 	CreateTPTool()
 
-	tpToolButton.Text = "PEGO!"
+	tpToolButton.Text = "Took!"
 	tpToolButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 
 	task.delay(1, function()
 
 		if tpToolButton.Parent then
 
-			tpToolButton.Text = "PEGAR"
+			tpToolButton.Text = "Take"
 			tpToolButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 
 		end
@@ -2373,7 +2373,7 @@ local tpBox = Instance.new("TextBox")
 tpBox.Parent = tpFrame
 tpBox.Position = UDim2.new(0,10,0,40)
 tpBox.Size = UDim2.new(0,180,0,40)
-tpBox.PlaceholderText = "Nome ou DisplayName"
+tpBox.PlaceholderText = "Name or DisplayName"
 tpBox.Text = ""
 tpBox.ClearTextOnFocus = false
 tpBox.Font = Enum.Font.Gotham
@@ -2443,7 +2443,7 @@ tpButton.MouseButton1Click:Connect(function()
 
 	if not target then
 
-		tpButton.Text = "NÃO ACHOU"
+		tpButton.Text = "Not found"
 		tpButton.BackgroundColor3 = Color3.fromRGB(255,0,0)
 
 		task.wait(1)
