@@ -3541,7 +3541,7 @@ touchFlingTitle.BackgroundTransparency = 1
 touchFlingTitle.Position = UDim2.new(0,10,0,5)
 touchFlingTitle.Size = UDim2.new(0,200,0,25)
 
-touchFlingTitle.Text = "Touch Fling (RISCO DE BAN)"
+touchFlingTitle.Text = "Touch Fling"
 touchFlingTitle.TextColor3 = Color3.new(1,1,1)
 touchFlingTitle.Font = Enum.Font.GothamBold
 touchFlingTitle.TextSize = 18
