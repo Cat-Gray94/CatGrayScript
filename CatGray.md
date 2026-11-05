@@ -634,15 +634,12 @@ local minimized = false
 local expandedSize = UDim2.fromOffset(430, 500)
 local minimizedSize = UDim2.fromOffset(430, 40)
 
----
-
- -- MINIMIZAR / RESTAURAR SEM DESLOCAR A BARRA
-
 minimize.MouseButton1Click:Connect(function()
 
 	
-	-- Guarda a posição visual do topo antes de mudar o tamanho.
-	local oldTopY = frame.AbsolutePosition.Y
+	-- Guarda a posição original do painel.
+	local oldPosition = frame.Position
+	local oldAbsoluteHeight = frame.AbsoluteSize.Y
 
 	minimized = not minimized
 
@@ -654,37 +651,33 @@ minimize.MouseButton1Click:Connect(function()
 		scroll.Visible = true
 	end
 
-	-- Espera o Roblox atualizar o tamanho visual.
+	-- Aguarda a atualização do tamanho visual.
 	task.defer(function()
 
 		if not frame or not frame.Parent then
 			return
 		end
 
-		local camera = workspace.CurrentCamera
-		if not camera then
-			return
-		end
+		local newAbsoluteHeight = frame.AbsoluteSize.Y
 
-		local newHeight = frame.AbsoluteSize.Y
-		local anchorY = frame.AnchorPoint.Y
+		-- Calcula a diferença real de altura.
+		local heightDifference = oldAbsoluteHeight - newAbsoluteHeight
 
-		-- Calcula a posição necessária para preservar o topo.
-		local positionY = oldTopY + newHeight * anchorY
+		-- Compensa a mudança para preservar o topo.
+		local yCorrection = heightDifference * frame.AnchorPoint.Y
 
 		frame.Position = UDim2.new(
-			frame.Position.X.Scale,
-			frame.Position.X.Offset,
-			0,
-			positionY
+			oldPosition.X.Scale,
+			oldPosition.X.Offset,
+			oldPosition.Y.Scale,
+			oldPosition.Y.Offset - yCorrection
 		)
 
-		KeepFrameOnScreen()
-
 	end)
-	
+
 
 end)
+
 
 
 ---------------------------------------------------
@@ -712,7 +705,7 @@ local speedBox = Instance.new("TextBox")
 speedBox.Parent = speedFrame
 speedBox.Position = UDim2.new(0,10,0,35)
 speedBox.Size = UDim2.new(0,120,0,35)
-speedBox.PlaceholderText = "16"
+speedBox.PlaceholderText = "50"
 speedBox.Text = ""
 speedBox.BackgroundColor3 = Color3.fromRGB(55,55,55)
 speedBox.TextColor3 = Color3.new(1,1,1)
@@ -1783,7 +1776,7 @@ healthTitle.Parent = healthFrame
 healthTitle.BackgroundTransparency = 1
 healthTitle.Position = UDim2.new(0,10,0,5)
 healthTitle.Size = UDim2.new(0,200,0,25)
-healthTitle.Text = "ESP Health"
+healthTitle.Text = "Show Health"
 healthTitle.Font = Enum.Font.GothamBold
 healthTitle.TextSize = 18
 healthTitle.TextColor3 = Color3.new(1,1,1)
@@ -1951,7 +1944,7 @@ itemsTitle.Parent = itemsFrame
 itemsTitle.BackgroundTransparency = 1
 itemsTitle.Position = UDim2.new(0,10,0,5)
 itemsTitle.Size = UDim2.new(0,200,0,25)
-itemsTitle.Text = "ESP Items"
+itemsTitle.Text = "Show items"
 itemsTitle.Font = Enum.Font.GothamBold
 itemsTitle.TextSize = 18
 itemsTitle.TextColor3 = Color3.new(1,1,1)
@@ -2054,7 +2047,7 @@ local function CreateItemESP()
 								if tool:IsA("Tool") then
 
 									if text == "" then
-										text = "[Equipado]\n"..tool.Name
+										text = "[Equiped]\n"..tool.Name
 									else
 										text = text.."\n[Equiped] "..tool.Name
 									end
@@ -2066,7 +2059,7 @@ local function CreateItemESP()
 						end
 
 						if text == "" then
-							text = "Nenhum item"
+							text = "Nothing item"
 						end
 
 						txt.Text = text
@@ -2255,7 +2248,7 @@ local function CreateTPTool()
 
 	local newTool = Instance.new("Tool")
 
-	newTool.Name = "TP Tool"
+	newTool.Name = "HD TP Tool"
 	newTool.RequiresHandle = false
 	newTool.CanBeDropped = false
 
@@ -2302,14 +2295,14 @@ tpToolButton.MouseButton1Click:Connect(function()
 
 	CreateTPTool()
 
-	tpToolButton.Text = "Took!"
+	tpToolButton.Text = "TOOK!"
 	tpToolButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 
 	task.delay(1, function()
 
 		if tpToolButton.Parent then
 
-			tpToolButton.Text = "Take"
+			tpToolButton.Text = "TAKE"
 			tpToolButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 
 		end
@@ -2363,7 +2356,7 @@ tpTitle.Parent = tpFrame
 tpTitle.BackgroundTransparency = 1
 tpTitle.Position = UDim2.new(0,10,0,5)
 tpTitle.Size = UDim2.new(0,220,0,25)
-tpTitle.Text = "TP to player"
+tpTitle.Text = "TP to Player"
 tpTitle.Font = Enum.Font.GothamBold
 tpTitle.TextSize = 18
 tpTitle.TextColor3 = Color3.new(1,1,1)
@@ -2377,7 +2370,7 @@ tpBox.PlaceholderText = "Name or DisplayName"
 tpBox.Text = ""
 tpBox.ClearTextOnFocus = false
 tpBox.Font = Enum.Font.Gotham
-tpBox.TextSize = 18
+tpBox.TextScaled = true
 tpBox.TextColor3 = Color3.new(1,1,1)
 tpBox.BackgroundColor3 = Color3.fromRGB(55,55,55)
 Instance.new("UICorner",tpBox)
@@ -2443,7 +2436,7 @@ tpButton.MouseButton1Click:Connect(function()
 
 	if not target then
 
-		tpButton.Text = "Not found"
+		tpButton.Text = "NÃO ACHOU"
 		tpButton.BackgroundColor3 = Color3.fromRGB(255,0,0)
 
 		task.wait(1)
@@ -2485,142 +2478,259 @@ tpButton.MouseButton1Click:Connect(function()
 
 end)
 
----------------------------------------------------
--- AIMBOT
----------------------------------------------------
+-------------------------------------------------------
+-- HD ADMIN AIMBOT - PLAYER LIST
+-- Sistema de travamento de câmera para sua experiência
+-------------------------------------------------------
+
+local RunService = game:GetService("RunService")
+
+-- FRAME PRINCIPAL DO AIMBOT
 
 local aimbotFrame = Instance.new("Frame")
 aimbotFrame.Parent = scroll
 aimbotFrame.Size = UDim2.new(1,-10,0,70)
 aimbotFrame.BackgroundColor3 = Color3.fromRGB(35,35,35)
+aimbotFrame.Name = "AimbotFrame"
 
-Instance.new("UICorner",aimbotFrame)
-
----------------------------------------------------
--- TÍTULO
----------------------------------------------------
+Instance.new("UICorner", aimbotFrame)
 
 local aimbotTitle = Instance.new("TextLabel")
 aimbotTitle.Parent = aimbotFrame
 aimbotTitle.BackgroundTransparency = 1
 aimbotTitle.Position = UDim2.new(0,10,0,5)
 aimbotTitle.Size = UDim2.new(0,200,0,25)
-
 aimbotTitle.Text = "Aimbot"
 aimbotTitle.TextColor3 = Color3.new(1,1,1)
 aimbotTitle.Font = Enum.Font.GothamBold
 aimbotTitle.TextSize = 18
 aimbotTitle.TextXAlignment = Enum.TextXAlignment.Left
 
----------------------------------------------------
--- BOTÃO
----------------------------------------------------
-
 local aimbotButton = Instance.new("TextButton")
 aimbotButton.Parent = aimbotFrame
-aimbotButton.Position = UDim2.new(1,-140,0,15)
-aimbotButton.Size = UDim2.new(0,120,0,40)
-
-aimbotButton.Text = "OFF"
-aimbotButton.BackgroundColor3 = Color3.fromRGB(255,0,0)
+aimbotButton.Position = UDim2.new(1, -140,0,15)
+aimbotButton.Size = UDim2.new(0, 120,0,40)
+aimbotButton.Text = "List"
+aimbotButton.BackgroundColor3 = Color3.fromRGB(0,170,255)
 aimbotButton.TextColor3 = Color3.new(1,1,1)
 aimbotButton.Font = Enum.Font.GothamBold
 aimbotButton.TextSize = 20
 
-Instance.new("UICorner",aimbotButton)
+Instance.new("UICorner", aimbotButton)
 
----------------------------------------------------
 -- VARIÁVEIS
----------------------------------------------------
 
-local aimbotEnabled = false
-local aimbotActive = false
 local aimbotTarget = nil
+local aimbotEnabled = false
+local nearestMode = false
+local aimbotConnection = nil
 
--- Número usado para cancelar loops antigos
-local aimbotLoopId = 0
+-- JANELA PLAYER LIST
 
----------------------------------------------------
--- PROCURAR ALVO
----------------------------------------------------
+local listGui = Instance.new("Frame")
+listGui.Name = "PlayerListAimbot"
+listGui.Parent = gui
+listGui.AnchorPoint = Vector2.new(0.5,0.5)
+listGui.Position = UDim2.fromScale(0.5,0.5)
+listGui.Size = UDim2.fromOffset(350,535)
+listGui.BackgroundColor3 = Color3.fromRGB(56, 56, 56)
+listGui.BorderSizePixel = 0
+listGui.Visible = false
 
-local function GetAimbotTarget()
+Instance.new("UICorner",listGui).CornerRadius = UDim.new(0,12)
+
+-- RESPONSIVIDADE DA GUI DO AIMBOT
+
+local aimbotResponsiveScale = Instance.new("UIScale")
+aimbotResponsiveScale.Name = "AimbotResponsiveScale"
+aimbotResponsiveScale.Parent = listGui
+
+local function UpdateAimbotResponsiveGUI()
+	local camera = workspace.CurrentCamera
+	if not camera then return end
+
+	local viewport = camera.ViewportSize
+	local touchMode = UIS.PreferredInput == Enum.PreferredInput.Touch
+
+	local marginX = touchMode and 24 or 40
+	local marginY = touchMode and 90 or 60
+
+	local scaleX = (viewport.X - marginX) / 350
+	local scaleY = (viewport.Y - marginY) / 535
+
+	local scale = math.min(1, scaleX, scaleY)
+
+	aimbotResponsiveScale.Scale = math.clamp(scale, 0.45, 1)
+end
+
+local aimbotViewportConnection
+
+local function ConnectAimbotCamera()
+	if aimbotViewportConnection then
+		aimbotViewportConnection:Disconnect()
+		aimbotViewportConnection = nil
+	end
 
 	local camera = workspace.CurrentCamera
 
-	if not camera then
+	if camera then
+		aimbotViewportConnection =
+			camera:GetPropertyChangedSignal("ViewportSize"):Connect(UpdateAimbotResponsiveGUI)
+	end
+
+	UpdateAimbotResponsiveGUI()
+end
+
+UIS:GetPropertyChangedSignal("PreferredInput"):Connect(UpdateAimbotResponsiveGUI)
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(ConnectAimbotCamera)
+
+ConnectAimbotCamera()
+
+local listStroke = Instance.new("UIStroke")
+listStroke.Parent = listGui
+listStroke.Color = Color3.fromRGB(0,0,0)
+listStroke.Thickness = 3
+
+local topAimbotList = Instance.new("Frame")
+topAimbotList.Parent = listGui
+topAimbotList.Position = UDim2.fromScale(0, 0,0, 0)
+topAimbotList.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+topAimbotList.Size = UDim2.fromScale(0.997, 0.082)
+topAimbotList.Name = "TopAimbotList"
+
+Instance.new("UICorner",topAimbotList)
+
+-- TÍTULO DA LISTA
+
+local listTitle = Instance.new("TextLabel")
+listTitle.Parent = topAimbotList
+listTitle.BackgroundTransparency = 1
+listTitle.Position = UDim2.fromOffset(10,5)
+listTitle.Size = UDim2.new(1,-65,0,35)
+listTitle.Text = "Player List Aimbot"
+listTitle.TextColor3 = Color3.new(1,1,1)
+listTitle.Font = Enum.Font.GothamBold
+listTitle.TextSize = 23
+listTitle.TextXAlignment = Enum.TextXAlignment.Left
+listTitle.TextStrokeTransparency = 0
+
+-- BOTÃO FECHAR
+
+local closeList = Instance.new("TextButton")
+closeList.Parent = topAimbotList
+closeList.Size = UDim2.fromOffset(32,32)
+closeList.Position = UDim2.new(1,-42,0,7)
+closeList.Text = "X"
+closeList.TextColor3 = Color3.new(1,1,1)
+closeList.TextSize = 22
+closeList.Font = Enum.Font.GothamBold
+closeList.BackgroundColor3 = Color3.fromRGB(255,0,0)
+
+Instance.new("UICorner",closeList)
+Instance.new("UIStroke",closeList)
+
+-- SCROLL DOS JOGADORES
+
+local playerScroll = Instance.new("ScrollingFrame")
+playerScroll.Parent = listGui
+playerScroll.Position = UDim2.fromOffset(10,50)
+playerScroll.Size = UDim2.new(1,-20,1,-110)
+playerScroll.BackgroundTransparency = 1
+playerScroll.BorderSizePixel = 0
+playerScroll.ScrollBarThickness = 5
+playerScroll.CanvasSize = UDim2.new(0,0,0,0)
+playerScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+local playerLayout = Instance.new("UIListLayout")
+playerLayout.Parent = playerScroll
+playerLayout.Padding = UDim.new(0,8)
+playerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- BOTÕES INFERIORES
+
+local nearestButton = Instance.new("TextButton")
+nearestButton.Parent = listGui
+nearestButton.Position = UDim2.new(0,10,1,-50)
+nearestButton.Size = UDim2.new(0.5,-15,0,40)
+nearestButton.Text = "Nearest-target\nAimbot"
+nearestButton.TextColor3 = Color3.new(1,1,1)
+nearestButton.Font = Enum.Font.GothamBold
+nearestButton.TextSize = 15
+nearestButton.BackgroundColor3 = Color3.fromRGB(0,170,255)
+
+Instance.new("UICorner",nearestButton)
+
+local cancelButton = Instance.new("TextButton")
+cancelButton.Parent = listGui
+cancelButton.Position = UDim2.new(0.5,5,1,-50)
+cancelButton.Size = UDim2.new(0.5,-15,0,40)
+cancelButton.Text = "Cancel Aimbot"
+cancelButton.TextColor3 = Color3.new(1,1,1)
+cancelButton.Font = Enum.Font.GothamBold
+cancelButton.TextSize = 15
+cancelButton.BackgroundColor3 = Color3.fromRGB(255,0,0)
+
+Instance.new("UICorner",cancelButton)
+
+-- FUNÇÕES DE PERSONAGEM
+
+local function GetAliveCharacter(targetPlayer)
+
+	if not targetPlayer then
+		return nil,nil
+	end
+
+	local character = targetPlayer.Character
+
+	if not character then
+		return nil,nil
+	end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local head = character:FindFirstChild("Head")
+
+	if not humanoid or humanoid.Health <= 0 or not head then
+		return nil,nil
+	end
+
+	return character,head
+
+end
+
+-- JOGADOR MAIS PRÓXIMO
+
+local function GetNearestPlayer()
+
+	local myCharacter = player.Character
+
+	if not myCharacter then
 		return nil
 	end
 
-	local viewport = camera.ViewportSize
+	local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
 
-	local screenCenter = Vector2.new(
-		viewport.X / 2,
-		viewport.Y / 2
-	)
+	if not myRoot then
+		return nil
+	end
 
 	local closestPlayer = nil
-	local closestScreenDistance = math.huge
+	local closestDistance = math.huge
 
-	for _, targetPlayer in ipairs(Players:GetPlayers()) do
+	for _,targetPlayer in ipairs(Players:GetPlayers()) do
 
 		if targetPlayer ~= player then
 
 			local character = targetPlayer.Character
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			local root = character and character:FindFirstChild("HumanoidRootPart")
 
-			if character then
+			if humanoid and humanoid.Health > 0 and root then
 
-				local humanoid =
-					character:FindFirstChildOfClass("Humanoid")
+				local distance = (root.Position - myRoot.Position).Magnitude
 
-				local head =
-					character:FindFirstChild("Head")
-
-				if humanoid
-					and head
-					and humanoid.Health > 0 then
-
-					---------------------------------------------------
-					-- CONVERTE A POSIÇÃO DO PLAYER PARA A TELA
-					---------------------------------------------------
-
-					local screenPosition, visible =
-						camera:WorldToViewportPoint(head.Position)
-
-					---------------------------------------------------
-					-- SÓ ACEITA SE ESTIVER APARECENDO NA CÂMERA
-					---------------------------------------------------
-
-					if visible and screenPosition.Z > 0 then
-
-						local screenPoint = Vector2.new(
-							screenPosition.X,
-							screenPosition.Y
-						)
-
-						---------------------------------------------------
-						-- DISTÂNCIA ATÉ O CENTRO DA CÂMERA
-						---------------------------------------------------
-
-						local distanceFromCenter =
-							(screenPoint - screenCenter).Magnitude
-
-						---------------------------------------------------
-						-- PEGA O MAIS PRÓXIMO DO CENTRO
-						---------------------------------------------------
-
-						if distanceFromCenter < closestScreenDistance then
-
-							closestScreenDistance =
-								distanceFromCenter
-
-							closestPlayer =
-								targetPlayer
-
-						end
-
-					end
-
+				if distance < closestDistance then
+					closestDistance = distance
+					closestPlayer = targetPlayer
 				end
 
 			end
@@ -2633,138 +2743,257 @@ local function GetAimbotTarget()
 
 end
 
----------------------------------------------------
--- START AIMBOT
----------------------------------------------------
+-- PARAR AIMBOT
 
-local function StartAimbot()
+local function StopAimbot()
 
-	if not aimbotEnabled then
-		return
+	aimbotEnabled = false
+	nearestMode = false
+	aimbotTarget = nil
+
+	if aimbotConnection then
+		aimbotConnection:Disconnect()
+		aimbotConnection = nil
 	end
 
-	if aimbotActive then
-		return
-	end
+end
 
-	-- Escolhe o alvo UMA VEZ
-	aimbotTarget = GetAimbotTarget()
+-- INICIAR AIMBOT
 
-	if not aimbotTarget then
-		return
-	end
+local function StartAimbot(targetPlayer,automatic)
 
-	aimbotActive = true
-	aimbotLoopId += 1
+	StopAimbot()
 
-	local thisLoopId = aimbotLoopId
+	aimbotEnabled = true
+	nearestMode = automatic
+	aimbotTarget = targetPlayer
 
-	task.spawn(function()
+	aimbotConnection = RunService.RenderStepped:Connect(function()
 
-		while aimbotEnabled
-			and aimbotActive
-			and thisLoopId == aimbotLoopId do
-
-			local camera = workspace.CurrentCamera
-
-			if camera then
-
-				local character =
-					aimbotTarget.Character
-
-				if not character then
-					break
-				end
-
-				local humanoid =
-					character:FindFirstChildOfClass("Humanoid")
-
-				local head =
-					character:FindFirstChild("Head")
-
-				-- Alvo morreu
-				if not humanoid
-					or humanoid.Health <= 0
-					or not head then
-
-					break
-
-				end
-
-				-- Olha SOMENTE para o alvo escolhido
-				local cameraPosition =
-					camera.CFrame.Position
-
-				camera.CFrame =
-					CFrame.lookAt(
-						cameraPosition,
-						head.Position
-					)
-
-			end
-
-			task.wait()
-
+		if not aimbotEnabled then
+			return
 		end
 
-		-- Se o alvo morreu/saiu,
-		-- para somente o funcionamento
-		aimbotActive = false
+		-- Modo automático procura sempre o jogador mais próximo.
+		if nearestMode then
+			aimbotTarget = GetNearestPlayer()
+		end
+
+		-- Se o alvo morreu ou saiu, procura outro.
+		if aimbotTarget then
+
+			local _,head = GetAliveCharacter(aimbotTarget)
+
+			if not head then
+				aimbotTarget = GetNearestPlayer()
+			end
+
+		else
+			aimbotTarget = GetNearestPlayer()
+		end
+
+		if not aimbotTarget then
+			return
+		end
+
+		local _,head = GetAliveCharacter(aimbotTarget)
+
+		if not head then
+			return
+		end
+
+		local camera = workspace.CurrentCamera
+
+		if camera then
+
+			local cameraPosition = camera.CFrame.Position
+
+			camera.CFrame = CFrame.lookAt(
+				cameraPosition,
+				head.Position
+			)
+
+		end
 
 	end)
 
 end
 
----------------------------------------------------
--- STOP AIMBOT
--- SÓ PARA O AIMBOT
--- O BOTÃO CONTINUA ON
----------------------------------------------------
+-- CRIAR CARTÃO DE JOGADOR
 
-local function StopAimbot()
+local function CreatePlayerCard(targetPlayer)
 
-	aimbotActive = false
-	aimbotTarget = nil
+	local card = Instance.new("Frame")
+	card.Parent = playerScroll
+	card.Size = UDim2.new(1,-5,0,87)
+	card.BackgroundColor3 = Color3.fromRGB(90,90,90)
+	card.BorderSizePixel = 0
 
-	-- Invalida qualquer loop antigo
-	aimbotLoopId += 1
+	Instance.new("UICorner",card).CornerRadius = UDim.new(0,10)
+
+	---------------------------------------------------
+	-- FOTO DE PERFIL
+	---------------------------------------------------
+
+	local avatar = Instance.new("ImageLabel")
+	avatar.Parent = card
+	avatar.Position = UDim2.fromOffset(10,12)
+	avatar.Size = UDim2.fromOffset(54,54)
+	avatar.BackgroundColor3 = Color3.fromRGB(235,235,235)
+	avatar.Image = ""
+
+	Instance.new("UICorner",avatar)
+
+	task.spawn(function()
+
+		local success,image = pcall(function()
+
+			return Players:GetUserThumbnailAsync(
+				targetPlayer.UserId,
+				Enum.ThumbnailType.HeadShot,
+				Enum.ThumbnailSize.Size150x150
+			)
+
+		end)
+
+		if success and avatar.Parent then
+			avatar.Image = image
+		end
+
+	end)
+
+	---------------------------------------------------
+	-- NOME DE EXIBIÇÃO
+	---------------------------------------------------
+
+	local displayName = Instance.new("TextLabel")
+	displayName.Parent = card
+	displayName.Position = UDim2.fromOffset(82,10)
+	displayName.Size = UDim2.new(1,-95,0,28)
+	displayName.BackgroundTransparency = 1
+	displayName.Text = targetPlayer.DisplayName
+	displayName.TextColor3 = Color3.new(1,1,1)
+	displayName.Font = Enum.Font.GothamBold
+	displayName.TextSize = 18
+	displayName.TextXAlignment = Enum.TextXAlignment.Left
+	displayName.TextTruncate = Enum.TextTruncate.AtEnd
+	displayName.TextStrokeTransparency = 0
+
+	---------------------------------------------------
+	-- BOTÃO AIMBOT
+	---------------------------------------------------
+
+	local selectButton = Instance.new("TextButton")
+	selectButton.Parent = card
+	selectButton.Position = UDim2.new(1,-115,0,49)
+	selectButton.Size = UDim2.fromOffset(105,30)
+	selectButton.Text = "Aimbot"
+	selectButton.TextColor3 = Color3.new(1,1,1)
+	selectButton.Font = Enum.Font.GothamBold
+	selectButton.TextSize = 17
+	selectButton.BackgroundColor3 = Color3.fromRGB(0,170,255)
+
+	Instance.new("UICorner",selectButton)
+
+	selectButton.MouseButton1Click:Connect(function()
+
+		if targetPlayer == player then
+			return
+		end
+
+		StartAimbot(targetPlayer,false)
+
+		listGui.Visible = false
+
+	end)
 
 end
 
----------------------------------------------------
--- BOTÃO ON/OFF
----------------------------------------------------
+-- ATUALIZAR LISTA
+
+local function UpdatePlayerList()
+
+	for _,child in ipairs(playerScroll:GetChildren()) do
+
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+
+	end
+
+	for _,targetPlayer in ipairs(Players:GetPlayers()) do
+
+		if targetPlayer ~= player then
+			CreatePlayerCard(targetPlayer)
+		end
+
+	end
+
+end
+
+-- BOTÃO LIST
 
 aimbotButton.MouseButton1Click:Connect(function()
 
-	aimbotEnabled = not aimbotEnabled
+	UpdatePlayerList()
+	listGui.Visible = true
 
-	if aimbotEnabled then
+end)
 
-		aimbotButton.Text = "ON"
-		aimbotButton.BackgroundColor3 =
-			Color3.fromRGB(0,255,0)
+-- FECHAR LISTA
 
-		StartAimbot()
+closeList.MouseButton1Click:Connect(function()
 
-	else
+	listGui.Visible = false
 
-		aimbotButton.Text = "OFF"
-		aimbotButton.BackgroundColor3 =
-			Color3.fromRGB(255,0,0)
+end)
 
-		StopAimbot()
+-- NEAREST-TARGET AIMBOT
 
+nearestButton.MouseButton1Click:Connect(function()
+
+	StartAimbot(nil,true)
+
+	listGui.Visible = false
+
+end)
+
+-- CANCEL AIMBOT
+
+cancelButton.MouseButton1Click:Connect(function()
+
+	StopAimbot()
+
+	listGui.Visible = false
+
+end)
+
+-- ATUALIZAÇÃO QUANDO JOGADORES ENTRAM/SAEM
+
+Players.PlayerAdded:Connect(function()
+
+	if listGui.Visible then
+		UpdatePlayerList()
 	end
 
 end)
 
----------------------------------------------------
--- TECLA R
----------------------------------------------------
+Players.PlayerRemoving:Connect(function(targetPlayer)
+
+	if targetPlayer == aimbotTarget then
+		aimbotTarget = nil
+	end
+
+	if listGui.Visible then
+		task.defer(UpdatePlayerList)
+	end
+
+end)
+-- TECLA R: NEAREST-TARGET
 
 UIS.InputBegan:Connect(function(input,gameProcessed)
 
+	
 	if gameProcessed then
 		return
 	end
@@ -2773,57 +3002,19 @@ UIS.InputBegan:Connect(function(input,gameProcessed)
 		return
 	end
 
-	-- Se o botão estiver OFF, R não faz nada
-	if not aimbotEnabled then
-		return
-	end
-
-	-- Se estiver ativo, R desliga
-	if aimbotActive then
+	if aimbotEnabled and nearestMode then
 
 		StopAimbot()
 
-		-- Se estiver parado, R liga
 	else
 
-		StartAimbot()
+		StartAimbot(nil,true)
 
 	end
+	
 
 end)
 
----------------------------------------------------
--- RESPAWN DO AIMBOT
----------------------------------------------------
-
-player.CharacterAdded:Connect(function()
-
-	task.wait(1)
-
-	-- Só volta automaticamente se o Aimbot
-	-- estava realmente ativo antes do respawn.
-	if aimbotEnabled and aimbotActive then
-
-		aimbotActive = false
-		aimbotTarget = nil
-
-		StartAimbot()
-
-	end
-
-end)
-
----------------------------------------------------
--- PLAYER SAIU
----------------------------------------------------
-
-Players.PlayerRemoving:Connect(function(targetPlayer)
-
-	if targetPlayer == aimbotTarget then
-		aimbotTarget = nil
-	end
-
-end)
 
 ---------------------------------------------------
 -- PARTE 5.4
@@ -3097,7 +3288,7 @@ Instance.new("UICorner",rejoinButton)
 
 rejoinButton.MouseButton1Click:Connect(function()
 
-	rejoinButton.Text = "Entrando..."
+	rejoinButton.Text = "Entering..."
 
 	task.wait(.5)
 
@@ -3131,7 +3322,7 @@ Instance.new("UICorner",hopButton)
 
 hopButton.MouseButton1Click:Connect(function()
 
-	hopButton.Text = "Procurando..."
+	hopButton.Text = "Looking for..."
 
 	local servers = {}
 
@@ -3600,7 +3791,7 @@ local originalCollide = {}
 local ARM_NAMES = {
 	["LeftUpperArm"] = true, ["LeftLowerArm"] = true, ["LeftHand"] = true,
 	["RightUpperArm"] = true, ["RightLowerArm"] = true, ["RightHand"] = true,
-	["Left Arm"] = true, ["Right Arm"] = true, -- R6
+	["Left Arm"] = true, ["Right Arm"] = true, ["UpperTorso"] = true, ["LowerTorso"] = true, -- R6
 }
 
 local function getHumanoid()
